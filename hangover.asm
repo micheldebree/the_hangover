@@ -14,6 +14,39 @@
 !let pic = koala("hangover.kla")
 !let sprites = spd("mysprites.spd")
 
+!let vicBase = $4000
+; !let vicBank = Math.floor(vicBase / $4000)
+
+
+!macro vicBank(bank) {
+  ; 0 = $0000-$3fff
+  ; 1 = $4000-$7fff (no rom chars)
+  ; 2 = $8000-$bfff
+  ; 3 = $c000=$ffff
+  lda $dd00
+  and #%11111100
+  ora #(bank ^ %11)
+  sta $dd00
+}
+
+!macro graphicPointers(bitmap, screenMem) {
+  ; bitmap: $0000 or $2000 (relative to vic bank)
+  ; screenmem: $0000 to $3fff, steps of $0400
+  !let screenMemP = (Math.floor(screenMem / $0400) & %1111)
+  !let bitmapP = (Math.floor(bitmap / $2000) & 1)
+
+  lda #(screenMemP << 4 | bitmapP << 3)
+  sta $d018
+}
+
+!macro logRange(label, from) {
+  !! debug.log(label, ": ", bytes.hex(from), "-", bytes.hex(*))
+}
+
+
+; bitmap: $4000-$6000
+; screenRam: $6000-
+
 * = $0801
 
 +basicStart(start)
@@ -33,8 +66,9 @@ start:
         lda #>nmi
         sta $fffb      ; dummy NMI (Non Maskable Interupt) to avoid crashing due to RESTORE
 
-        lda #$38
-        sta $d018
+        +vicBank(1)
+        +graphicPointers(bitmap-vicBase, screenRam-vicBase)
+
         lda #$d8
         sta $d016
         lda #$3b
@@ -93,25 +127,33 @@ irq:
 nmi:
         rti
 
-!align 64
++logRange("Code", start)
 
+* = music.location
+!byte music.data
++logRange("Music", music.location)
+
+; * = $1c00 ;- $2000
+
+colorRam:
+!byte pic.colorRam
++logRange("Color RAM", colorRam)
+
+
+* = vicBase 
+bitmap:
+!byte pic.bitmap
++logRange("Bitmap", bitmap)
+
+!align $0400
+screenRam:
+!byte pic.screenRam
++logRange("Screen RAM", screenRam)
+
+!align 64
 spriteData:
 !for i in range(sprites.numSprites) {
   !byte sprites.data[i]
 }
-!! debug.log("Sprites end at ", bytes.hex(*)) 
-!! debug.log(($0c00 - *) /64, " sprites left")
-
-* = $0c00 ;- $1000
-screenRam:
-!byte pic.screenRam
-
-* = $1c00 ;- $2000
-colorRam:
-!byte pic.colorRam
-
-* = $2000 ;- $4000
-!byte pic.bitmap
-
-* = music.location
-!byte music.data
++logRange("Sprites", spriteData)
+!! debug.log(($8000 - *) /64, " sprites left")
