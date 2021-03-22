@@ -1,4 +1,3 @@
-!let startline = $32      ; raster interrupt occurs at this rasterline
 ; .const KOALA_TEMPLATE = "C64FILE, Bitmap=$0000, ScreenRam=$1f40, ColorRam=$2328, BackgroundColor = $2710"
 ; .var picture = LoadBinary("arnie.kla", KOALA_TEMPLATE)
 ; .var music = LoadSid("terminator.sid")
@@ -12,23 +11,13 @@
 
 !let music = sid("hangover.sid")
 !let pic = koala("hangover.kla")
-!let sprites = spritepad.loadV1("hangover.spd")
-!! debug.log(sprites.numberOfSprites, " sprites loaded.")
+!let spritesTitle = spritepad.loadV1("title.spd")
+!let spritesSubtitle = spritepad.loadV1("subtitle.spd")
+!let spritesCredits = spritepad.loadV1("credits.spd")
 
 !let vicBase = $4000
-; !let vicBank = Math.floor(vicBase / $4000)
 
-
-!macro vicBank(bank) {
-  ; 0 = $0000-$3fff
-  ; 1 = $4000-$7fff (no rom chars)
-  ; 2 = $8000-$bfff
-  ; 3 = $c000=$ffff
-  lda $dd00
-  and #%11111100
-  ora #(bank ^ %11)
-  sta $dd00
-}
+!let titleY = [190, 190+24, 190+2*24] ; y locations for title lines
 
 !macro graphicPointers(bitmap, screenMem) {
   ; bitmap: $0000 or $2000 (relative to vic bank)
@@ -45,8 +34,22 @@
 }
 
 
-; bitmap: $4000-$6000
-; screenRam: $6000-
+!macro setupSprites(lineNr) {
+  lda #titleY[lineNr] - 2
+wait:
+  cmp $d012
+  bne wait
+
+  inc $d020
+  ldy #titleY[lineNr]
+  !for i in range(8) {
+    lda #spritesTitleData / 64 + lineNr * 8 + i
+    sta screenRam + $03f8 + i
+    sty $d001 + 2 *i
+  }
+  dec $d020
+}
+
 
 * = $0801
 
@@ -67,8 +70,8 @@ start:
         lda #>nmi
         sta $fffb      ; dummy NMI (Non Maskable Interupt) to avoid crashing due to RESTORE
 
-        +vicBank(1)
-        +graphicPointers(bitmap-vicBase, screenRam-vicBase)
+        +selectVicBank(vicBase / $4000)
+        +graphicPointers(bitmap - vicBase, screenRam - vicBase)
 
         lda #$d8
         sta $d016
@@ -82,7 +85,7 @@ start:
         sta $d021
         ldx #0
 loop:
-        !for i in range(4) {
+        !for i in range(4) { ; move color ram
           lda i * $100 + colorRam,x
           sta i * $100 + $d800,x
         }
@@ -95,18 +98,16 @@ loop:
         sta $d015
         lda #%11100000
         sta $d010
-        !for i in range(8) {
-          lda #spriteData / 64 + i
-          sta screenRam + $03f8 + i
+
+        ldx #1
+        !for i in range(8) { ; setup sprites
+          lda #spritesTitleData / 64 + i
           lda #152-8 + (i * 24)
           sta $d000 + 2 * i
-          lda #190
-          sta $d001 + 2 * i
-          lda #1
-          sta $d027 + i
+          stx $d027 + i
         }
 
-        lda #startline
+        lda #titleY[0] - 16
         sta $d012
 
         lda #<irq
@@ -119,11 +120,12 @@ loop:
         cli
 
         jmp *       ; Do nothing and let the interrupt do all the work.
-
 irq:
-        lda #$ff
-        sta $d019 ; acknowledge interrupt
+        +setupSprites(0);
+        +setupSprites(1);
+        +setupSprites(2);
         jsr music.play
+        asl $d019
 nmi:
         rti
 
@@ -140,6 +142,7 @@ colorRam:
 +logRange("Color RAM", colorRam)
 
 * = vicBase 
+
 bitmap:
 !byte pic.bitmap
 +logRange("Bitmap", bitmap)
@@ -150,8 +153,10 @@ screenRam:
 +logRange("Screen RAM", screenRam)
 
 !align 64
-spriteData:
-!byte sprites.data
+spritesTitleData:
+!byte spritesTitle.data
+!byte spritesSubtitle.data
+!byte spritesCredits.data
 
-+logRange("Sprites", spriteData)
++logRange("Sprites", spritesTitleData)
 !! debug.log(($8000 - *) /64, " sprites left")

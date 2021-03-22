@@ -21,7 +21,8 @@ DEBUGGER=/Applications/C64\ Debugger.app/Contents/MacOS/C64\ Debugger
 	retropixels -m sprites -h --rows 1 "$<"
 
 hangover.prg: hangover.asm \
-	hangover.spd \
+	title.spd \
+	subtitle.spd \
 	credits.spd
 
 clean:

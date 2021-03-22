@@ -79,3 +79,14 @@
 done:
 }
 
+
+!macro selectVicBank(bank) {
+  ; 0 = $0000-$3fff
+  ; 1 = $4000-$7fff (no rom chars)
+  ; 2 = $8000-$bfff
+  ; 3 = $c000=$ffff (no rom chars)
+  lda $dd00
+  and #%11111100
+  ora #(bank ^ %11)
+  sta $dd00
+}
