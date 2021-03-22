@@ -17,7 +17,12 @@ DEBUGGER=/Applications/C64\ Debugger.app/Contents/MacOS/C64\ Debugger
 	$(DEBUGGER) -prg "$<" -pass -unpause -wait 3000 -autojmp -layout 9
 	# x64sc -initbreak ready -moncommands "$*.vs" "$@"
 
-hangover.prg: hangover.asm
+%.spd: %.png
+	retropixels -m sprites -h --rows 1 "$<"
+
+hangover.prg: hangover.asm \
+	hangover.spd \
+	credits.spd
 
 clean:
 	rm -f *.prg
@@ -26,3 +31,4 @@ clean:
 	rm -f *.vs
 	rm -f *.dbg
 	rm -f *.d64
+	rm -f *.spd

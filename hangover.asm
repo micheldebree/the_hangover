@@ -6,13 +6,14 @@
 !include "lib/macros.asm"
 !use "lib/sid" as sid
 !use "lib/koala" as koala
-!use "lib/spd" as spd
+!use "lib/spritepad" as spritepad
 !use "lib/bytes" as bytes
 !use "lib/debug" as debug
 
 !let music = sid("hangover.sid")
 !let pic = koala("hangover.kla")
-!let sprites = spd("mysprites.spd")
+!let sprites = spritepad.loadV1("hangover.spd")
+!! debug.log(sprites.numberOfSprites, " sprites loaded.")
 
 !let vicBase = $4000
 ; !let vicBank = Math.floor(vicBase / $4000)
@@ -95,7 +96,7 @@ loop:
         lda #%11100000
         sta $d010
         !for i in range(8) {
-          lda #spriteData/64 + i
+          lda #spriteData / 64 + i
           sta screenRam + $03f8 + i
           lda #152-8 + (i * 24)
           sta $d000 + 2 * i
@@ -105,9 +106,8 @@ loop:
           sta $d027 + i
         }
 
- ; configure the rasterline at which the raster interrupt request should occur
         lda #startline
-        sta $d012       ; set the lowest 8 bits of the irq rasterline
+        sta $d012
 
         lda #<irq
         sta $fffe
@@ -139,7 +139,6 @@ colorRam:
 !byte pic.colorRam
 +logRange("Color RAM", colorRam)
 
-
 * = vicBase 
 bitmap:
 !byte pic.bitmap
@@ -152,8 +151,7 @@ screenRam:
 
 !align 64
 spriteData:
-!for i in range(sprites.numSprites) {
-  !byte sprites.data[i]
-}
+!byte sprites.data
+
 +logRange("Sprites", spriteData)
 !! debug.log(($8000 - *) /64, " sprites left")
