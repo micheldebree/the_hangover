@@ -18,12 +18,9 @@ DEBUGGER=/Applications/C64\ Debugger.app/Contents/MacOS/C64\ Debugger
 	# x64sc -initbreak ready -moncommands "$*.vs" "$@"
 
 %.spd: %.png
-	retropixels -m sprites -h --rows 1 "$<"
+	retropixels -m sprites -h --rows 3 --cols 8 "$<"
 
-hangover.prg: hangover.asm \
-	title.spd \
-	subtitle.spd \
-	credits.spd
+hangover.prg: hangover.asm titles.spd 
 
 clean:
 	rm -f *.prg

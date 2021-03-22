@@ -11,13 +11,12 @@
 
 !let music = sid("hangover.sid")
 !let pic = koala("hangover.kla")
-!let spritesTitle = spritepad.loadV1("title.spd")
-!let spritesSubtitle = spritepad.loadV1("subtitle.spd")
-!let spritesCredits = spritepad.loadV1("credits.spd")
+!let spritesTitle = spritepad.loadV1("titles.spd")
 
 !let vicBase = $4000
 
-!let titleY = [190, 190+24, 190+2*24] ; y locations for title lines
+!let titleY = [100, 100+24, 220] ; y locations for title lines
+!let lineColors = [$01, $01, $01] ; sprite colors per line
 
 !macro graphicPointers(bitmap, screenMem) {
   ; bitmap: $0000 or $2000 (relative to vic bank)
@@ -33,7 +32,6 @@
   !! debug.log(label, ": ", bytes.hex(from), "-", bytes.hex(*))
 }
 
-
 !macro setupSprites(lineNr) {
   lda #titleY[lineNr] - 2
 wait:
@@ -42,14 +40,15 @@ wait:
 
   inc $d020
   ldy #titleY[lineNr]
+  ldx #lineColors[lineNr]
   !for i in range(8) {
     lda #spritesTitleData / 64 + lineNr * 8 + i
     sta screenRam + $03f8 + i
     sty $d001 + 2 *i
+    stx $d027 + i
   }
   dec $d020
 }
-
 
 * = $0801
 
@@ -155,8 +154,6 @@ screenRam:
 !align 64
 spritesTitleData:
 !byte spritesTitle.data
-!byte spritesSubtitle.data
-!byte spritesCredits.data
 
 +logRange("Sprites", spritesTitleData)
 !! debug.log(($8000 - *) /64, " sprites left")

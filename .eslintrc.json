@@ -1,0 +1,18 @@
+{
+  "env": {
+    "node": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 7,
+    "sourceType": "module"
+  },
+  "extends": [
+    "prettier",
+    "plugin:prettier/recommended"
+  ],
+  "rules": {
+    "semi": 2,
+    "quotes": [2, "single"],
+    "no-bitwise": "off"
+  }
+}
