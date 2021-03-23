@@ -8,8 +8,9 @@
 !use "lib/spritepad" as spritepad
 !use "lib/bytes" as bytes
 !use "lib/debug" as debug
+!use "lib/sines" as sines
 
-!let music = sid("hangover.sid")
+!let music = sid("lastnight1c.sid")
 !let pic = koala("hangover.kla")
 !let spritesTitle = spritepad.loadV1("titles.spd")
 
@@ -17,6 +18,12 @@
 
 !let titleY = [100, 100+24, 220] ; y locations for title lines
 !let lineColors = [$01, $01, $01] ; sprite colors per line
+!let sineMask = %01111111
+
+!let zp = { ; zero page adresses to use as local variables
+  a: $fa
+}
+!let sineIndex = [$fb, $fc, $fd]
 
 !macro graphicPointers(bitmap, screenMem) {
   ; bitmap: $0000 or $2000 (relative to vic bank)
@@ -33,7 +40,7 @@
 }
 
 !macro setupSprites(lineNr) {
-  lda #titleY[lineNr] - 2
+  lda #titleY[lineNr] - 4
 wait:
   cmp $d012
   bne wait
@@ -47,6 +54,19 @@ wait:
     sty $d001 + 2 *i
     stx $d027 + i
   }
+  ldx #0
+  ldy #0
+  lda spriteD010
+  sta $d010
+set_x:  
+  lda spriteX,x
+  sta $d000,y
+  iny
+  iny
+  inx
+  cpx #8
+  bne set_x
+
   dec $d020
 }
 
@@ -95,8 +115,9 @@ loop:
 
         lda #$ff
         sta $d015
-        lda #%11100000
-        sta $d010
+        ; lda #%11100000
+        ; lda #0
+        ; sta $d010
 
         ldx #1
         !for i in range(8) { ; setup sprites
@@ -124,9 +145,58 @@ irq:
         +setupSprites(1);
         +setupSprites(2);
         jsr music.play
+
+move_sprites: {
+!let x_offset = zp.a
+
+        ldx sineIndex[0]
+        ldy #0
+        sty x_offset
+        sty spriteD010
+set_sprite_x:
+        lsr spriteD010
+        lda sineLo,x
+        clc
+        adc x_offset
+        sta spriteX,y
+        lda sineHi,x
+        adc #0
+        beq no_overflow
+        lda spriteD010
+        ora #%10000000
+        sta spriteD010
+no_overflow:
+        lda x_offset
+        clc
+        adc #24
+        sta x_offset
+        iny
+        cpy #8
+        bmi set_sprite_x
+
+        lda sineIndex[0]
+        clc
+!let sine_speed = * + 1
+        adc #1
+        and #sineMask
+        sta sineIndex[0]
+        cmp #sineMask / 2
+        bne done  
+        ; lda #0
+        ; sta sine_speed
+done:
+        ; lda spriteD010
+        ; sta $d010
+}
+
         asl $d019
 nmi:
         rti
+
+spriteX:
+  !fill 3 * 8, 0
+spriteD010:
+  !fill 3, 0
 
 +logRange("Code", start)
 
@@ -136,9 +206,18 @@ nmi:
 
 ; * = $1c00 ;- $2000
 
+!align $0100
 colorRam:
 !byte pic.colorRam
 +logRange("Color RAM", colorRam)
+
+!align $0100
+!let sine = sines.sine01(341, 200, sineMask + 1)
+sineLo: 
+  !byte bytes.loBytes(sine)
+sineHi:
+  !byte bytes.hiBytes(sine)
++logRange("Sine", sineLo)
 
 * = vicBase 
 

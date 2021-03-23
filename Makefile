@@ -20,7 +20,9 @@ DEBUGGER=/Applications/C64\ Debugger.app/Contents/MacOS/C64\ Debugger
 %.spd: %.png
 	retropixels -m sprites -h --rows 3 --cols 8 "$<"
 
-hangover.prg: hangover.asm titles.spd 
+hangover.prg: hangover.asm \
+	lib/sines.js \
+	titles.spd 
 
 clean:
 	rm -f *.prg
