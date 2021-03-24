@@ -10,8 +10,11 @@
 !let pic = koala("hangover.kla")
 !let spriteFile = spritepad.loadV1("titles.spd")
 
+!let sineMask = %01111111
 !let titleY = [100, 100+24, 220] ; y locations for title lines
 !let lineColors = [$01, $01, $01] ; sprite colors per line
+!let initD010 = $ff
+!let initX = 250
 
 !let zp = { ; zero page adresses to use as local variables
   a: $fb,
@@ -33,7 +36,7 @@
 }
 
 !macro setupSprites(lineNr) {
-  lda #titleY[lineNr] - 4
+  lda #titleY[lineNr] - 5
 wait:
   cmp $d012
   bne wait
@@ -49,10 +52,10 @@ wait:
   }
   ldx #0
   ldy #0
-  lda move_sprites::spriteD010
+  lda spriteD010 + lineNr
   sta $d010
 set_x:  
-  lda move_sprites::spriteX,x
+  lda spriteX + 8 * lineNr,x
   sta $d000,y
   iny
   iny
@@ -61,6 +64,60 @@ set_x:
   bne set_x
 
   ; dec $d020
+}
+
+!macro moveSprites(lineNr) {
+
+!let x_offset = zp.a
+!let hi_bit = zp.b
+
+        ldx sineIndex + lineNr
+        ldy #0
+        sty x_offset
+        sty hi_bit
+set_sprite_x:
+        lsr hi_bit
+        lda sineLo,x
+        clc
+        adc x_offset
+        sta spriteX + 8 * lineNr,y
+        lda sineHi,x
+        adc #0
+        beq no_overflow
+        lda hi_bit
+        ora #%10000000
+        sta hi_bit
+no_overflow:
+        lda x_offset
+        clc
+        adc #24
+        sta x_offset
+        iny
+        cpy #8
+        bmi set_sprite_x
+
+        lda sineIndex + lineNr
+        clc
+!let sine_speed = * + 1
+        adc #0
+        and #sineMask
+
+        sta sineIndex + lineNr
+        cmp #sineMask / 2
+        bne no_stop  
+        lda #0
+        sta sine_speed
+        sta after_delay + 1
+no_stop:
+        lda hi_bit
+        sta spriteD010 + lineNr
+        dec sineDelay + lineNr
+        bne done
+after_delay:        
+        lda #1
+        sta sine_speed
+done:
+
 }
 
 * = $0801
@@ -108,14 +165,12 @@ loop:
 
         lda #$ff
         sta $d015
-        ; lda #%11100000
-        ; lda #0
-        ; sta $d010
+        lda #initD010
+        sta $d010
 
         ldx #1
         !for i in range(8) { ; setup sprites
-          lda #vicBase::spritesData / 64 + i
-          lda #152-8 + (i * 24)
+          lda #initX
           sta $d000 + 2 * i
           stx $d027 + i
         }
@@ -139,67 +194,26 @@ irq: {
         +setupSprites(0);
         +setupSprites(1);
         +setupSprites(2);
-        jsr move_sprites
+        +moveSprites(0);
+        +moveSprites(1);
+        +moveSprites(2);
         jsr music.play
         asl $d019
 nmi:
         rti
 }
 
-move_sprites: {
-
-!let sineMask = %01111111
-!let x_offset = zp.a
-!let hi_bit = zp.b
-
-        ldx sineIndex
-        ldy #0
-        sty x_offset
-        sty hi_bit
-set_sprite_x:
-        lsr hi_bit
-        lda sineLo,x
-        clc
-        adc x_offset
-        sta spriteX,y
-        lda sineHi,x
-        adc #0
-        beq no_overflow
-        lda hi_bit
-        ora #%10000000
-        sta hi_bit
-no_overflow:
-        lda x_offset
-        clc
-        adc #24
-        sta x_offset
-        iny
-        cpy #8
-        bmi set_sprite_x
-
-        lda sineIndex
-        clc
-!let sine_speed = * + 1
-        adc #1
-        and #sineMask
-
-        sta sineIndex
-        cmp #sineMask / 2
-        bne done  
-        lda #0
-        sta sine_speed
-done:
-        lda hi_bit
-        sta spriteD010
-        rts
 
 spriteX:
-  !fill 3 * 8, 0
+  !fill 3 * 8, initX
 spriteD010:
-  !fill 3, 0
+  !fill 3, initD010
+
 
 sineIndex:
   !fill 3, 0
+sineDelay:
+  !byte $40+1, $40+$10, $40+$40
 
 !let sine = sines.sine01(341, 200, sineMask + 1)
 
@@ -210,7 +224,6 @@ sineHi:
   !byte bytes.hiBytes(sine)
 +logRange("Sine", sineLo)
 
-}
 
 * = music.location
 
@@ -221,7 +234,6 @@ sineHi:
 colorRam:
 !byte pic.colorRam
 +logRange("Color RAM", colorRam)
-
 
 * = $4000
 
