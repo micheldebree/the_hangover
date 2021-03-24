@@ -1,7 +1,3 @@
-; .const KOALA_TEMPLATE = "C64FILE, Bitmap=$0000, ScreenRam=$1f40, ColorRam=$2328, BackgroundColor = $2710"
-; .var picture = LoadBinary("arnie.kla", KOALA_TEMPLATE)
-; .var music = LoadSid("terminator.sid")
-
 !include "lib/macros.asm"
 !use "lib/sid" as sid
 !use "lib/koala" as koala
@@ -10,20 +6,17 @@
 !use "lib/debug" as debug
 !use "lib/sines" as sines
 
-!let music = sid("lastnight1c.sid")
+!let music = sid("lastnight1d.sid")
 !let pic = koala("hangover.kla")
-!let spritesTitle = spritepad.loadV1("titles.spd")
-
-!let vicBase = $4000
+!let spriteFile = spritepad.loadV1("titles.spd")
 
 !let titleY = [100, 100+24, 220] ; y locations for title lines
 !let lineColors = [$01, $01, $01] ; sprite colors per line
-!let sineMask = %01111111
 
 !let zp = { ; zero page adresses to use as local variables
-  a: $fa
+  a: $fb,
+  b: $fc
 }
-!let sineIndex = [$fb, $fc, $fd]
 
 !macro graphicPointers(bitmap, screenMem) {
   ; bitmap: $0000 or $2000 (relative to vic bank)
@@ -45,21 +38,21 @@ wait:
   cmp $d012
   bne wait
 
-  inc $d020
+  ; inc $d020
   ldy #titleY[lineNr]
   ldx #lineColors[lineNr]
   !for i in range(8) {
-    lda #spritesTitleData / 64 + lineNr * 8 + i
-    sta screenRam + $03f8 + i
+    lda #vicBase::spritesData / 64 + lineNr * 8 + i
+    sta vicBase::screenRam + $03f8 + i
     sty $d001 + 2 *i
     stx $d027 + i
   }
   ldx #0
   ldy #0
-  lda spriteD010
+  lda move_sprites::spriteD010
   sta $d010
 set_x:  
-  lda spriteX,x
+  lda move_sprites::spriteX,x
   sta $d000,y
   iny
   iny
@@ -67,14 +60,14 @@ set_x:
   cpx #8
   bne set_x
 
-  dec $d020
+  ; dec $d020
 }
 
 * = $0801
 
-+basicStart(start)
++basicStart(setup)
 
-start:
+setup: {
         sei             ; Turn off interrupts
         jsr $ff81       ; ROM Kernal function to clear the screen
         lda #%00110101
@@ -84,13 +77,13 @@ start:
         sta $dc0d      ; no timer IRQs
         lda $dc0d      ; acknowledge CIA interrupts
 
-        lda #<nmi
+        lda #<irq::nmi
         sta $fffa
-        lda #>nmi
+        lda #>irq::nmi
         sta $fffb      ; dummy NMI (Non Maskable Interupt) to avoid crashing due to RESTORE
 
         +selectVicBank(vicBase / $4000)
-        +graphicPointers(bitmap - vicBase, screenRam - vicBase)
+        +graphicPointers(vicBase::bitmap - vicBase, vicBase::screenRam - vicBase)
 
         lda #$d8
         sta $d016
@@ -121,7 +114,7 @@ loop:
 
         ldx #1
         !for i in range(8) { ; setup sprites
-          lda #spritesTitleData / 64 + i
+          lda #vicBase::spritesData / 64 + i
           lda #152-8 + (i * 24)
           sta $d000 + 2 * i
           stx $d027 + i
@@ -140,21 +133,31 @@ loop:
         cli
 
         jmp *       ; Do nothing and let the interrupt do all the work.
-irq:
+}
+
+irq: {
         +setupSprites(0);
         +setupSprites(1);
         +setupSprites(2);
+        jsr move_sprites
         jsr music.play
+        asl $d019
+nmi:
+        rti
+}
 
 move_sprites: {
-!let x_offset = zp.a
 
-        ldx sineIndex[0]
+!let sineMask = %01111111
+!let x_offset = zp.a
+!let hi_bit = zp.b
+
+        ldx sineIndex
         ldy #0
         sty x_offset
-        sty spriteD010
+        sty hi_bit
 set_sprite_x:
-        lsr spriteD010
+        lsr hi_bit
         lda sineLo,x
         clc
         adc x_offset
@@ -162,9 +165,9 @@ set_sprite_x:
         lda sineHi,x
         adc #0
         beq no_overflow
-        lda spriteD010
+        lda hi_bit
         ora #%10000000
-        sta spriteD010
+        sta hi_bit
 no_overflow:
         lda x_offset
         clc
@@ -174,65 +177,67 @@ no_overflow:
         cpy #8
         bmi set_sprite_x
 
-        lda sineIndex[0]
+        lda sineIndex
         clc
 !let sine_speed = * + 1
         adc #1
         and #sineMask
-        sta sineIndex[0]
+
+        sta sineIndex
         cmp #sineMask / 2
         bne done  
-        ; lda #0
-        ; sta sine_speed
+        lda #0
+        sta sine_speed
 done:
-        ; lda spriteD010
-        ; sta $d010
-}
-
-        asl $d019
-nmi:
-        rti
+        lda hi_bit
+        sta spriteD010
+        rts
 
 spriteX:
   !fill 3 * 8, 0
 spriteD010:
   !fill 3, 0
 
-+logRange("Code", start)
+sineIndex:
+  !fill 3, 0
 
-* = music.location
-!byte music.data
-+logRange("Music", music.location)
-
-; * = $1c00 ;- $2000
-
-!align $0100
-colorRam:
-!byte pic.colorRam
-+logRange("Color RAM", colorRam)
-
-!align $0100
 !let sine = sines.sine01(341, 200, sineMask + 1)
+
+!align $0100
 sineLo: 
   !byte bytes.loBytes(sine)
 sineHi:
   !byte bytes.hiBytes(sine)
 +logRange("Sine", sineLo)
 
-* = vicBase 
+}
+
+* = music.location
+
+!byte music.data
++logRange("Music", music.location)
+
+!align $0100
+colorRam:
+!byte pic.colorRam
++logRange("Color RAM", colorRam)
+
+
+* = $4000
+
+vicBase: {
 
 bitmap:
-!byte pic.bitmap
-+logRange("Bitmap", bitmap)
+  !byte pic.bitmap
 
 !align $0400
 screenRam:
-!byte pic.screenRam
-+logRange("Screen RAM", screenRam)
+  !byte pic.screenRam
 
 !align 64
-spritesTitleData:
-!byte spritesTitle.data
+spritesData:
+  !byte spriteFile.data
 
-+logRange("Sprites", spritesTitleData)
++logRange("VIC data", spritesData)
 !! debug.log(($8000 - *) /64, " sprites left")
+}
