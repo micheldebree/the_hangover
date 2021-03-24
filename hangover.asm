@@ -11,7 +11,7 @@
 !let spriteFile = spritepad.loadV1("titles.spd")
 
 !let sineMask = %01111111
-!let titleY = [100, 100+24, 220] ; y locations for title lines
+!let titleY = [174, 176+24, 226] ; y locations for title lines
 !let lineColors = [$01, $01, $01] ; sprite colors per line
 !let initD010 = $ff
 !let initX = 250
