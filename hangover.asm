@@ -64,6 +64,7 @@ wait:
   ; dec $d020
 }
 
+
 !macro moveSprites(lineNr) {
 
 !let x_offset = zp.a
@@ -138,7 +139,6 @@ setup: {
 
         +selectVicBank(vicBase / $4000)
         +graphicPointers(vicBase::bitmap - vicBase, vicBase::screenRam - vicBase)
-        !break
         +screenControl(0,1,1)
 
         ; lda #$d8
@@ -189,6 +189,7 @@ loop:
 
 irq: {
         +setupSprites(0);
+        jsr fuzz
         +setupSprites(1);
         +setupSprites(2);
         +moveSprites(0);
@@ -198,6 +199,58 @@ irq: {
         asl $d019
 nmi:
         rti
+}
+
+fuzz: {
+  ; inc $d020
+  ; dec wait
+  ; bne skip
+  ; dec wait + 1
+  ; lda wait + 1
+  ; and #%0000001
+  ; bne skip
+
+height:  
+  ldx #0
+  cpx #0
+  beq skip
+offset:
+  ldy #0
+loop:
+  !for i in range(8) {
+    lda music.location,y
+    and #3
+    adc $d000 + 2 * i
+    sta $d000 + 2 * i
+  }
+  iny
+  dex
+  bne loop
+  inc offset+1
+  lda offset+1
+random:
+  cmp #$40
+  bne exit
+  lda #0 
+  sta height + 1
+  sta offset + 1
+random2:
+  lda setup
+  sta random + 1
+  inc random2 + 1
+  jmp exit
+skip:
+  dec wait
+  bne exit
+  lda #7
+  sta height + 1
+exit:
+  ; dec $d020
+  rts
+
+wait: 
+!byte $c0,0
+
 }
 
 spriteX:
@@ -218,7 +271,6 @@ sineLo:
 sineHi:
   !byte bytes.hiBytes(sine)
 +logRange("Sine", sineLo)
-
 
 * = music.location
 
