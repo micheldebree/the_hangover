@@ -6,13 +6,12 @@
 !use "lib/debug" as debug
 !use "lib/sines" as sines
 
-!let music = sid("lastnight1d.sid")
+!let music = sid("lastnight-1e.sid")
 !let pic = koala("hangover.kla")
 !let spriteFile = spritepad.loadV1("titles.spd")
 
 !let sineMask = %01111111
 !let titleY = [174, 176+24, 226] ; y locations for title lines
-!let lineColors = [$01, $01, $01] ; sprite colors per line
 !let initD010 = $ff
 !let initX = 250
 
@@ -31,6 +30,15 @@
   sta $d018
 }
 
+!macro screenControl(horScroll, columns, multicolor) {
+  !let horScrollM = horScroll & %111
+  !let columnsM = (columns & 1) << 3
+  !let multicolorM = (multicolor &  1) << 4
+
+  lda #(horScrollM | columnsM | multicolorM)
+  sta $d016
+}
+
 !macro logRange(label, from) {
   !! debug.log(label, ": ", bytes.hex(from), "-", bytes.hex(*))
 }
@@ -43,25 +51,15 @@ wait:
 
   ; inc $d020
   ldy #titleY[lineNr]
-  ldx #lineColors[lineNr]
   !for i in range(8) {
     lda #vicBase::spritesData / 64 + lineNr * 8 + i
     sta vicBase::screenRam + $03f8 + i
     sty $d001 + 2 *i
-    stx $d027 + i
+    lda spriteX + 8 * lineNr + i
+    sta $d000 + 2 * i
   }
-  ldx #0
-  ldy #0
   lda spriteD010 + lineNr
   sta $d010
-set_x:  
-  lda spriteX + 8 * lineNr,x
-  sta $d000,y
-  iny
-  iny
-  inx
-  cpx #8
-  bne set_x
 
   ; dec $d020
 }
@@ -126,7 +124,6 @@ done:
 
 setup: {
         sei             ; Turn off interrupts
-        jsr $ff81       ; ROM Kernal function to clear the screen
         lda #%00110101
         sta $01         ; Turn off Kernal ROM
 
@@ -141,17 +138,17 @@ setup: {
 
         +selectVicBank(vicBase / $4000)
         +graphicPointers(vicBase::bitmap - vicBase, vicBase::screenRam - vicBase)
+        !break
+        +screenControl(0,1,1)
 
-        lda #$d8
-        sta $d016
+        ; lda #$d8
+        ; sta $d016
         lda #$3b
         sta $d011
         lda #0
         sta $d020
-        jsr music.init
-        ; lda pic.backgroundColor
-        lda #0
         sta $d021
+        jsr music.init
         ldx #0
 loop:
         !for i in range(4) { ; move color ram
@@ -203,12 +200,10 @@ nmi:
         rti
 }
 
-
 spriteX:
   !fill 3 * 8, initX
 spriteD010:
   !fill 3, initD010
-
 
 sineIndex:
   !fill 3, 0
