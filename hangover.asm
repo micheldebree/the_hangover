@@ -6,7 +6,7 @@
 !use "lib/debug" as debug
 !use "lib/sines" as sines
 
-!let music = sid("lastnight02.sid")
+!let music = sid("hangover.sid")
 !let pic = koala("hangover.kla")
 !let spriteFile = spritepad.loadV1("titles.spd")
 

@@ -10,6 +10,9 @@
     "retropixels": "0.8.1"
   },
   "scripts": {
+    "clean": "rm -f *.prg && rm -f *.exe.prg && rm -f *.sym && rm -f *.vs && rm -f *.dbg && rm -f *.d64 && rm -f *.spd",
+    "sprites": "npx retropixels -m sprites -h --rows 3 --cols 8 --overwrite titles.png",
+    "build": "npx c64jasm --c64debugger-symbols hangover.dbg --out hangover.prg --verbose hangover.asm",
     "lint": "npx eslint '*/**/*.js' --quiet -c .eslintrc.json --no-eslintrc",
     "fix": "npx eslint '*/**/*.js' --quiet --fix -c .eslintrc.json --no-eslintrc"
   }
