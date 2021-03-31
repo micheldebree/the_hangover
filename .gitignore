@@ -2,3 +2,4 @@
 *.prg
 node_modules
 *.log
+*.spd

@@ -6,7 +6,7 @@
 !use "lib/debug" as debug
 !use "lib/sines" as sines
 
-!let music = sid("lastnight-1e.sid")
+!let music = sid("lastnight02.sid")
 !let pic = koala("hangover.kla")
 !let spriteFile = spritepad.loadV1("titles.spd")
 
@@ -166,8 +166,8 @@ loop:
         sta $d010
 
         ldx #1
+        lda #initX
         !for i in range(8) { ; setup sprites
-          lda #initX
           sta $d000 + 2 * i
           stx $d027 + i
         }

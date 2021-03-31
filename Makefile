@@ -18,7 +18,7 @@ DEBUGGER=/Applications/C64\ Debugger.app/Contents/MacOS/C64\ Debugger
 	# x64sc -initbreak ready -moncommands "$*.vs" "$@"
 
 %.spd: %.png
-	retropixels -m sprites -h --rows 3 --cols 8 "$<"
+	npx retropixels -m sprites -h --rows 3 --cols 8 "$<"
 
 hangover.prg: hangover.asm \
 	lib/sines.js \
