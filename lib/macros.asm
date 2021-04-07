@@ -1,3 +1,4 @@
+!use "lib/debug" as debug
 !let FIRST_VISIBLE_RASTERLINE = $33
 !let LAST_VISIBLE_RASTERLINE = $fa
 !let LAST_RASTERLINE = $137
@@ -18,6 +19,8 @@
     !byte $30 + addr % 10, 0, 0, 0
 }
 
+; Interrupts
+
 !macro setInterrupt(rasterline, address) {
   lda #<address
   sta $fffe
@@ -33,24 +36,6 @@
     and #%01111111
     sta $d011
   }
-}
-
-; waste a number of cycles
-!macro wasteCycles(nrCycles) {
-
-  !let left = nrCycles
-  !let nrInc = Math.floor(nrCycles / 6)
-  !if (nrCycles % 6 == 1) { !let nrInc = nrInc - 1 }
-  !for i in range(nrInc) { inc DUMMY_WRITE_ADDR }
-  !! left = left - nrInc * 6
-
-  !let nrBit = Math.floor(left / 3)
-  !if (left % 3 == 1) { !! nrBit = nrBit - 1 }
-  !for i in range(nrBit) { bit $ea }
-  !! left = left - nrBit * 3
-
-  !let nrNop = Math.floor(left / 2)
-  !for i in range(nrNop) { nop }
 }
 
 !macro stabilize() {
@@ -79,8 +64,27 @@
 done:
 }
 
+!macro wasteCycles(nrCycles) { ; waste a number of cycles
 
-!macro selectVicBank(bank) {
+  !let left = nrCycles
+  !let nrInc = Math.floor(nrCycles / 6)
+  !if (nrCycles % 6 == 1) { !let nrInc = nrInc - 1 }
+  !for i in range(nrInc) { inc DUMMY_WRITE_ADDR }
+  !! left = left - nrInc * 6
+
+  !let nrBit = Math.floor(left / 3)
+  !if (left % 3 == 1) { !! nrBit = nrBit - 1 }
+  !for i in range(nrBit) { bit $ea }
+  !! left = left - nrBit * 3
+
+  !let nrNop = Math.floor(left / 2)
+  !for i in range(nrNop) { nop }
+}
+
+; VIC
+
+vic: {
+!macro selectBank(bank) {
   ; 0 = $0000-$3fff
   ; 1 = $4000-$7fff (no rom chars)
   ; 2 = $8000-$bfff
@@ -89,4 +93,40 @@ done:
   and #%11111100
   ora #(bank ^ %11)
   sta $dd00
+}
+!macro setScreenControl1(verScroll, rows, enable, bitmap, ecm, rasterHi) { ; d011
+    !let verScrollP = verScroll & %111
+    !let rowsP = (rows & 1) << 3
+    !let enableP = (enable & 1) << 4
+    !let bitmapP = (bitmap & 1) << 5
+    !let ecmP = (ecm & 1) << 6 
+    !let rasterHiP = (rasterHi & 1) << 7
+
+    lda #(verScrollP | rowsP | enableP | bitmapP | ecmP | rasterHiP)
+    sta $d011
+
+}
+!macro setScreenControl2(xScroll, columns, multicolor) { ; d016
+    ; xScroll: horizontal scrolling (0-7) 
+    ; columns: 0 = 38 columns, 1 = 40 columns
+    ; multicolor: TRUE/FALSE
+
+    lda #((xScroll & %111) | ((columns & 1) << 3) | ((multicolor & 1)) << 4)
+    sta $d016
+}
+!macro setMemoryPointers(bitmap, screenMem) { ; d018
+    ; bitmap: $0000 or $2000 (relative to vic bank)
+    ; screenmem: $0000 to $3fff, steps of $0400
+    !let screenMemP = (Math.floor(screenMem / $0400) & %1111)
+    !let bitmapP = (Math.floor(bitmap / $2000) & 1)
+
+    lda #(screenMemP << 4 | bitmapP << 3)
+    sta $d018
+}
+}
+
+; Debugging
+
+!macro logRange(label, from) {
+  !! debug.log(label, ": ", bytes.hex(from), "-", bytes.hex(*))
 }

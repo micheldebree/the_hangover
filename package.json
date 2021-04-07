@@ -1,13 +1,13 @@
 {
   "devDependencies": {
-    "c64jasm": "0.9.1",
-    "eslint": "7.21.0",
-    "eslint-config-airbnb-base": "14.2.1",
-    "eslint-config-prettier": "8.1.0",
-    "eslint-plugin-import": "2.22.1",
-    "eslint-plugin-prettier": "3.3.1",
-    "prettier": "2.2.1",
-    "retropixels": "0.8.1"
+    "c64jasm": "~0.9.1",
+    "eslint": "~7.23.0",
+    "eslint-config-airbnb-base": "~14.2.1",
+    "eslint-config-prettier": "~8.1.0",
+    "eslint-plugin-import": "~2.22.1",
+    "eslint-plugin-prettier": "~3.3.1",
+    "prettier": "~2.2.1",
+    "retropixels": "~0.8.1"
   },
   "scripts": {
     "clean": "rm -f *.prg && rm -f *.exe.prg && rm -f *.sym && rm -f *.vs && rm -f *.dbg && rm -f *.d64 && rm -f *.spd",

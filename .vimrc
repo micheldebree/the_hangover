@@ -6,9 +6,9 @@ noremap <F7> :wa<CR>:make %<.debug<bar> cwindow<CR>:redraw!<CR>
 noremap <F8> :wa<CR>:make %<.exe.prg<bar> cwindow<CR>:redraw!<CR>
 noremap <F9> O!break<ESC>
 set autoindent
-set shiftwidth=2
-set tabstop=2
-set softtabstop=2
+set shiftwidth=4
+set tabstop=4
+set softtabstop=4
 set smartindent
 set expandtab
 set foldmethod=marker
