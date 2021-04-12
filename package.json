@@ -1,6 +1,21 @@
 {
+  "name": "The Hangover",
+  "config": {
+    "main": "hangover",
+    "emulator": {
+      "executable": "x64sc"
+    },
+    "debugger": {
+      "executable": "/Applications/C64 Debugger.app/Contents/MacOS/C64 Debugger",
+      "options": "-wait 3000 -autojump -layout 9"
+    },
+    "cruncher": {
+      "executable": "exomizer",
+      "options": "sfx basic"
+    }
+  },
   "devDependencies": {
-    "c64jasm": "~0.9.1",
+    "c64jasm": "~0.9.2",
     "eslint": "^7.23.0",
     "eslint-config-airbnb-base": "~14.2.1",
     "eslint-config-prettier": "~8.1.0",
@@ -10,10 +25,13 @@
     "retropixels": "~0.8.1"
   },
   "scripts": {
-    "clean": "rm -f *.prg && rm -f *.exe.prg && rm -f *.sym && rm -f *.vs && rm -f *.dbg && rm -f *.d64 && rm -f *.spd",
-    "sprites": "npx retropixels -m sprites -h --rows 3 --cols 8 --overwrite titles.png",
-    "build": "npx c64jasm --c64debugger-symbols hangover.dbg --out hangover.prg --verbose hangover.asm",
+    "build": "npx c64jasm --c64debugger-symbols ${npm_package_config_main}.dbg --out ${npm_package_config_main}.prg --verbose ${npm_package_config_main}.asm",
+    "dist": "\"${npm_package_config_cruncher_executable}\" ${npm_package_config_cruncher_options} ${npm_package_config_main}.prg -o ${npm_package_config_main}.prg",
+    "build_resources": "npx retropixels -m sprites -h --rows 3 --cols 8 --overwrite titles.png",
+    "start": "\"${npm_package_config_emulator_executable}\" ${npm_package_config_main}.prg",
+    "debug": "\"${npm_package_config_debugger_executable}\" ${npm_package_config_debugger_options} -prg ${npm_package_config_main}.prg",
     "lint": "npx eslint '*/**/*.js' --quiet -c .eslintrc.json --no-eslintrc",
-    "fix": "npx eslint '*/**/*.js' --quiet --fix -c .eslintrc.json --no-eslintrc"
+    "fix": "npx eslint '*/**/*.js' --quiet --fix -c .eslintrc.json --no-eslintrc",
+    "clean": "rm -f *.prg && rm -f *.exe.prg && rm -f *.sym && rm -f *.vs && rm -f *.dbg && rm -f *.d64 && rm -f *.spd"
   }
 }
